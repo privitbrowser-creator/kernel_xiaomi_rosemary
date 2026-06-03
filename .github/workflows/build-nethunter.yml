@@ -35,157 +35,146 @@ jobs:
 
       - name: 🔧 Clone Clang Toolchain
         run: |
-          mkdir -p $HOME/clang-llvm
-          git clone https://github.com/rama982/clang --depth=1 $HOME/clang-llvm
+          git clone https://github.com/rama982/clang --depth=1 /home/runner/clang-llvm
 
       - name: 📦 Clone AnyKernel3
         run: |
-          git clone https://github.com/rama982/AnyKernel3 -b rosemary $HOME/AnyKernel
+          git clone https://github.com/rama982/AnyKernel3 -b rosemary /home/runner/AnyKernel
 
       - name: 🔰 Apply NetHunter Kernel Config
         run: |
-          # ============================================
-          # إضافة خصائص NetHunter إلى defconfig
-          # ============================================
           CONFIG_FILE="arch/arm64/configs/rosemary_defconfig"
 
-          echo ">> Applying NetHunter patches to defconfig..."
+          set_config() {
+            ./scripts/config --file $CONFIG_FILE --enable $1 2>/dev/null || \
+            echo "$1=y" >> $CONFIG_FILE
+          }
 
-          # --- WiFi Monitor Mode & Packet Injection ---
-          echo "CONFIG_CFG80211=y"                          >> $CONFIG_FILE
-          echo "CONFIG_CFG80211_WEXT=y"                     >> $CONFIG_FILE
-          echo "CONFIG_MAC80211=y"                          >> $CONFIG_FILE
-          echo "CONFIG_MAC80211_MESH=y"                     >> $CONFIG_FILE
-          echo "CONFIG_MAC80211_RC_MINSTREL=y"              >> $CONFIG_FILE
-          echo "CONFIG_MAC80211_RC_MINSTREL_HT=y"           >> $CONFIG_FILE
-          echo "CONFIG_MAC80211_RC_DEFAULT_MINSTREL=y"      >> $CONFIG_FILE
+          set_module() {
+            ./scripts/config --file $CONFIG_FILE --module $1 2>/dev/null || \
+            echo "$1=m" >> $CONFIG_FILE
+          }
 
-          # --- USB WiFi Adapters Drivers ---
-          echo "CONFIG_USB_NET_DRIVERS=y"                   >> $CONFIG_FILE
-          echo "CONFIG_USB_NET_RNDIS_WLAN=y"               >> $CONFIG_FILE
-          echo "CONFIG_ATH9K_HTC=y"                         >> $CONFIG_FILE
-          echo "CONFIG_ATH9K_HTC_DEBUGFS=y"                 >> $CONFIG_FILE
-          echo "CONFIG_ATH6KL=y"                            >> $CONFIG_FILE
-          echo "CONFIG_ATH6KL_USB=y"                        >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB=y"                         >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB_RT33XX=y"                  >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB_RT35XX=y"                  >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB_RT53XX=y"                  >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB_RT55XX=y"                  >> $CONFIG_FILE
-          echo "CONFIG_RT2800USB_UNKNOWN=y"                 >> $CONFIG_FILE
-          echo "CONFIG_RT2X00=y"                            >> $CONFIG_FILE
-          echo "CONFIG_RT2500USB=y"                         >> $CONFIG_FILE
-          echo "CONFIG_RT73USB=y"                           >> $CONFIG_FILE
-          echo "CONFIG_ZD1211RW=y"                          >> $CONFIG_FILE
-          echo "CONFIG_LIBERTAS=y"                          >> $CONFIG_FILE
-          echo "CONFIG_LIBERTAS_USB=y"                      >> $CONFIG_FILE
-          echo "CONFIG_LIBERTAS_THINFIRM=y"                 >> $CONFIG_FILE
-          echo "CONFIG_LIBERTAS_THINFIRM_USB=y"             >> $CONFIG_FILE
-          echo "CONFIG_CARL9170=y"                          >> $CONFIG_FILE
-          echo "CONFIG_P54_USB=y"                           >> $CONFIG_FILE
-          echo "CONFIG_PRISM2_USB=y"                        >> $CONFIG_FILE
-          echo "CONFIG_RTLWIFI=y"                           >> $CONFIG_FILE
-          echo "CONFIG_RTL8192CU=y"                         >> $CONFIG_FILE
-          echo "CONFIG_RTL8XXXU=y"                          >> $CONFIG_FILE
-          echo "CONFIG_RTL8XXXU_UNTESTED=y"                 >> $CONFIG_FILE
+          # WiFi Monitor Mode & Packet Injection
+          set_config CONFIG_CFG80211
+          set_config CONFIG_CFG80211_WEXT
+          set_config CONFIG_MAC80211
+          set_config CONFIG_MAC80211_MESH
+          set_config CONFIG_MAC80211_RC_MINSTREL
+          set_config CONFIG_MAC80211_RC_MINSTREL_HT
+          set_config CONFIG_MAC80211_RC_DEFAULT_MINSTREL
 
-          # --- USB HID (Rubber Ducky / Keyboard Gadget) ---
-          echo "CONFIG_USB_GADGET=y"                        >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS=y"                      >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_F_HID=y"               >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_F_SERIAL=y"            >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_F_ACM=y"               >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_RNDIS=y"               >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_NCM=y"                  >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_ECM=y"                  >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_ECM_SUBSET=y"           >> $CONFIG_FILE
-          echo "CONFIG_USB_CONFIGFS_F_FS=y"                 >> $CONFIG_FILE
-          echo "CONFIG_USB_G_HID=y"                         >> $CONFIG_FILE
-          echo "CONFIG_HID=y"                               >> $CONFIG_FILE
-          echo "CONFIG_USB_HID=y"                           >> $CONFIG_FILE
-          echo "CONFIG_HID_GENERIC=y"                       >> $CONFIG_FILE
+          # USB WiFi Drivers
+          set_config CONFIG_USB_NET_DRIVERS
+          set_config CONFIG_USB_NET_RNDIS_WLAN
+          set_module CONFIG_ATH9K_HTC
+          set_module CONFIG_ATH6KL_USB
+          set_module CONFIG_RT2800USB
+          set_config CONFIG_RT2800USB_RT33XX
+          set_config CONFIG_RT2800USB_RT35XX
+          set_config CONFIG_RT2800USB_RT53XX
+          set_config CONFIG_RT2800USB_RT55XX
+          set_config CONFIG_RT2800USB_UNKNOWN
+          set_module CONFIG_RT2500USB
+          set_module CONFIG_RT73USB
+          set_module CONFIG_ZD1211RW
+          set_module CONFIG_CARL9170
+          set_module CONFIG_P54_USB
+          set_module CONFIG_RTL8XXXU
+          set_config CONFIG_RTL8XXXU_UNTESTED
+          set_module CONFIG_RTL8192CU
 
-          # --- USB Network / RNDIS ---
-          echo "CONFIG_USB_NET_CDCETHER=y"                  >> $CONFIG_FILE
-          echo "CONFIG_USB_NET_CDC_NCM=y"                   >> $CONFIG_FILE
-          echo "CONFIG_USB_NET_HUAWEI_CDC_NCM=y"            >> $CONFIG_FILE
-          echo "CONFIG_USB_NET_CDC_MBIM=y"                  >> $CONFIG_FILE
-          echo "CONFIG_USB_NET_RNDIS_HOST=y"                >> $CONFIG_FILE
+          # USB HID Gadget
+          set_config CONFIG_USB_GADGET
+          set_config CONFIG_USB_CONFIGFS
+          set_config CONFIG_USB_CONFIGFS_F_HID
+          set_config CONFIG_USB_CONFIGFS_F_SERIAL
+          set_config CONFIG_USB_CONFIGFS_F_ACM
+          set_config CONFIG_USB_CONFIGFS_RNDIS
+          set_config CONFIG_USB_CONFIGFS_NCM
+          set_config CONFIG_USB_CONFIGFS_ECM
+          set_config CONFIG_USB_CONFIGFS_F_FS
+          set_config CONFIG_USB_G_HID
+          set_config CONFIG_HID
+          set_config CONFIG_USB_HID
+          set_config CONFIG_HID_GENERIC
 
-          # --- Bluetooth ---
-          echo "CONFIG_BT=y"                                >> $CONFIG_FILE
-          echo "CONFIG_BT_HCIBTUSB=y"                       >> $CONFIG_FILE
-          echo "CONFIG_BT_HCIBTUSB_BCM=y"                   >> $CONFIG_FILE
-          echo "CONFIG_BT_HCIBTUSB_RTL=y"                   >> $CONFIG_FILE
-          echo "CONFIG_BT_RFCOMM=y"                         >> $CONFIG_FILE
-          echo "CONFIG_BT_RFCOMM_TTY=y"                     >> $CONFIG_FILE
-          echo "CONFIG_BT_BNEP=y"                           >> $CONFIG_FILE
-          echo "CONFIG_BT_HIDP=y"                           >> $CONFIG_FILE
-          echo "CONFIG_BT_LE=y"                             >> $CONFIG_FILE
+          # USB Network
+          set_config CONFIG_USB_NET_CDCETHER
+          set_config CONFIG_USB_NET_CDC_NCM
+          set_config CONFIG_USB_NET_RNDIS_HOST
+          set_module CONFIG_USB_NET_HUAWEI_CDC_NCM
+          set_module CONFIG_USB_NET_CDC_MBIM
 
-          # --- Network Tools (nmap, tcpdump, etc.) ---
-          echo "CONFIG_PACKET=y"                            >> $CONFIG_FILE
-          echo "CONFIG_PACKET_DIAG=y"                       >> $CONFIG_FILE
-          echo "CONFIG_UNIX=y"                              >> $CONFIG_FILE
-          echo "CONFIG_NET_KEY=y"                           >> $CONFIG_FILE
-          echo "CONFIG_INET=y"                              >> $CONFIG_FILE
-          echo "CONFIG_IP_ADVANCED_ROUTER=y"                >> $CONFIG_FILE
-          echo "CONFIG_IP_MULTIPLE_TABLES=y"                >> $CONFIG_FILE
-          echo "CONFIG_NETFILTER=y"                         >> $CONFIG_FILE
-          echo "CONFIG_NETFILTER_ADVANCED=y"                >> $CONFIG_FILE
-          echo "CONFIG_NF_CONNTRACK=y"                      >> $CONFIG_FILE
-          echo "CONFIG_NF_CONNTRACK_EVENTS=y"               >> $CONFIG_FILE
-          echo "CONFIG_NETFILTER_NETLINK=y"                 >> $CONFIG_FILE
-          echo "CONFIG_NETFILTER_NETLINK_ACCT=y"            >> $CONFIG_FILE
-          echo "CONFIG_NETFILTER_NETLINK_QUEUE=y"           >> $CONFIG_FILE
-          echo "CONFIG_IP_NF_IPTABLES=y"                    >> $CONFIG_FILE
-          echo "CONFIG_IP_NF_FILTER=y"                      >> $CONFIG_FILE
-          echo "CONFIG_IP_NF_NAT=y"                         >> $CONFIG_FILE
-          echo "CONFIG_IP_NF_MANGLE=y"                      >> $CONFIG_FILE
-          echo "CONFIG_IP_NF_TARGET_MASQUERADE=y"           >> $CONFIG_FILE
-          echo "CONFIG_IP6_NF_IPTABLES=y"                   >> $CONFIG_FILE
-          echo "CONFIG_IP6_NF_FILTER=y"                     >> $CONFIG_FILE
-          echo "CONFIG_IP6_NF_MANGLE=y"                     >> $CONFIG_FILE
-          echo "CONFIG_IP6_NF_NAT=y"                        >> $CONFIG_FILE
+          # Bluetooth
+          set_config CONFIG_BT
+          set_module CONFIG_BT_HCIBTUSB
+          set_config CONFIG_BT_HCIBTUSB_BCM
+          set_config CONFIG_BT_HCIBTUSB_RTL
+          set_config CONFIG_BT_RFCOMM
+          set_config CONFIG_BT_RFCOMM_TTY
+          set_config CONFIG_BT_BNEP
+          set_config CONFIG_BT_HIDP
+          set_config CONFIG_BT_LE
 
-          # --- TUN/TAP (VPN مثل OpenVPN) ---
-          echo "CONFIG_TUN=y"                               >> $CONFIG_FILE
-          echo "CONFIG_TAP=y"                               >> $CONFIG_FILE
+          # Netfilter / iptables
+          set_config CONFIG_PACKET
+          set_config CONFIG_PACKET_DIAG
+          set_config CONFIG_NET_KEY
+          set_config CONFIG_IP_ADVANCED_ROUTER
+          set_config CONFIG_IP_MULTIPLE_TABLES
+          set_config CONFIG_NETFILTER
+          set_config CONFIG_NETFILTER_ADVANCED
+          set_config CONFIG_NF_CONNTRACK
+          set_config CONFIG_NF_CONNTRACK_EVENTS
+          set_config CONFIG_NETFILTER_NETLINK
+          set_config CONFIG_NETFILTER_NETLINK_QUEUE
+          set_config CONFIG_IP_NF_IPTABLES
+          set_config CONFIG_IP_NF_FILTER
+          set_config CONFIG_IP_NF_NAT
+          set_config CONFIG_IP_NF_MANGLE
+          set_config CONFIG_IP_NF_TARGET_MASQUERADE
+          set_config CONFIG_IP6_NF_IPTABLES
+          set_config CONFIG_IP6_NF_FILTER
+          set_config CONFIG_IP6_NF_MANGLE
+          set_config CONFIG_IP6_NF_NAT
 
-          # --- NFS / CIFS ---
-          echo "CONFIG_NFS_FS=y"                            >> $CONFIG_FILE
-          echo "CONFIG_NFS_V4=y"                            >> $CONFIG_FILE
-          echo "CONFIG_CIFS=y"                              >> $CONFIG_FILE
+          # TUN/TAP
+          set_config CONFIG_TUN
 
-          # --- SDR (Software Defined Radio - HackRF etc.) ---
-          echo "CONFIG_USB_SERIAL=y"                        >> $CONFIG_FILE
-          echo "CONFIG_USB_SERIAL_GENERIC=y"                >> $CONFIG_FILE
-          echo "CONFIG_USB_SERIAL_CP210X=y"                 >> $CONFIG_FILE
-          echo "CONFIG_USB_SERIAL_FTDI_SIO=y"               >> $CONFIG_FILE
-          echo "CONFIG_USB_SERIAL_PL2303=y"                 >> $CONFIG_FILE
-          echo "CONFIG_USB_SERIAL_CH341=y"                  >> $CONFIG_FILE
-          echo "CONFIG_USB_ACM=y"                           >> $CONFIG_FILE
+          # USB Serial
+          set_config CONFIG_USB_SERIAL
+          set_config CONFIG_USB_SERIAL_GENERIC
+          set_module CONFIG_USB_SERIAL_CP210X
+          set_module CONFIG_USB_SERIAL_FTDI_SIO
+          set_module CONFIG_USB_SERIAL_PL2303
+          set_module CONFIG_USB_SERIAL_CH341
+          set_module CONFIG_USB_ACM
 
-          # --- CAN Bus ---
-          echo "CONFIG_CAN=y"                               >> $CONFIG_FILE
-          echo "CONFIG_CAN_RAW=y"                           >> $CONFIG_FILE
-          echo "CONFIG_CAN_BCM=y"                           >> $CONFIG_FILE
-          echo "CONFIG_CAN_GW=y"                            >> $CONFIG_FILE
-          echo "CONFIG_CAN_VCAN=y"                          >> $CONFIG_FILE
+          # CAN Bus
+          set_config CONFIG_CAN
+          set_config CONFIG_CAN_RAW
+          set_config CONFIG_CAN_BCM
+          set_config CONFIG_CAN_GW
+          set_config CONFIG_CAN_VCAN
 
-          echo ">> NetHunter config applied successfully!"
+          # NFS / CIFS
+          set_config CONFIG_NFS_FS
+          set_config CONFIG_NFS_V4
+          set_module CONFIG_CIFS
+
+          echo "✅ NetHunter config applied!"
 
       - name: 🏗️ Build Kernel
         run: |
-          export PATH="$HOME/clang-llvm/bin:$PATH"
+          export PATH="/home/runner/clang-llvm/bin:$PATH"
           export ARCH=arm64
           export SUBARCH=arm64
-          export OUTDIR=$HOME/out
+          export OUTDIR=/home/runner/out
           mkdir -p $OUTDIR
 
           echo "-NetHunter-Rosemary" > localversion
 
-          # Generate .config from defconfig
           make O=$OUTDIR \
             ARCH=arm64 \
             CC=clang \
@@ -198,7 +187,6 @@ jobs:
             OBJDUMP=llvm-objdump \
             rosemary_defconfig
 
-          # Build
           make -j$(nproc) O=$OUTDIR \
             ARCH=arm64 \
             CC=clang \
@@ -209,42 +197,41 @@ jobs:
             AR=llvm-ar \
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
-            2>&1 | tee build.log
+            2>&1 | tee /home/runner/build.log
 
-          # تحقق من نجاح البناء
-          if [ ! -f "$OUTDIR/arch/arm64/boot/Image.gz" ]; then
-            echo "❌ BUILD FAILED! Image.gz not found"
-            tail -50 build.log
+          if [ ! -f "/home/runner/out/arch/arm64/boot/Image.gz" ]; then
+            echo "❌ BUILD FAILED - Image.gz not found!"
+            tail -50 /home/runner/build.log
             exit 1
           fi
           echo "✅ Kernel built successfully!"
 
       - name: 📦 Package with AnyKernel3
         run: |
-          OUTDIR=$HOME/out
           DATE=$(date "+%Y%m%d-%H%M")
+          ZIPNAME="NetHunter-Rosemary-${DATE}.zip"
 
-          cp $OUTDIR/arch/arm64/boot/Image.gz $HOME/AnyKernel/
-          cd $HOME/AnyKernel
+          cp /home/runner/out/arch/arm64/boot/Image.gz /home/runner/AnyKernel/
+          cd /home/runner/AnyKernel
 
-          zip -r9 "NetHunter-Rosemary-${DATE}.zip" ./* \
-            --exclude=".git" \
+          zip -r9 "$ZIPNAME" ./* \
+            --exclude=".git/*" \
             --exclude="*.zip"
 
-          echo "✅ Package created: NetHunter-Rosemary-${DATE}.zip"
-          ls -lh *.zip
+          echo "✅ ZIP created: $ZIPNAME"
+          ls -lh /home/runner/AnyKernel/*.zip
 
       - name: 🚀 Upload Kernel ZIP
         uses: actions/upload-artifact@v4
         with:
           name: NetHunter-Rosemary-Kernel
-          path: /root/AnyKernel/NetHunter-Rosemary-*.zip
+          path: /home/runner/AnyKernel/NetHunter-Rosemary-*.zip
           retention-days: 30
 
-      - name: 📋 Upload Build Log (if failed)
+      - name: 📋 Upload Build Log on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-log-error
-          path: build.log
+          path: /home/runner/build.log
           retention-days: 7
