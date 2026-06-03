@@ -1,0 +1,250 @@
+name: Build NetHunter Kernel - Rosemary
+
+on:
+  workflow_dispatch:
+    inputs:
+      BUILD_TITLE:
+        description: 'اسم البناء (اختياري)'
+        required: false
+        default: 'NetHunter-Rosemary'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: 📥 Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          ref: R
+          fetch-depth: 1
+
+      - name: 🛠️ Install Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            git gcc g++ make bc bison flex \
+            libssl-dev libelf-dev libc6-dev \
+            binutils-aarch64-linux-gnu \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabi \
+            python3 python3-pip \
+            zip unzip curl wget \
+            cpio kmod
+
+      - name: 🔧 Clone Clang Toolchain
+        run: |
+          mkdir -p $HOME/clang-llvm
+          git clone https://github.com/rama982/clang --depth=1 $HOME/clang-llvm
+
+      - name: 📦 Clone AnyKernel3
+        run: |
+          git clone https://github.com/rama982/AnyKernel3 -b rosemary $HOME/AnyKernel
+
+      - name: 🔰 Apply NetHunter Kernel Config
+        run: |
+          # ============================================
+          # إضافة خصائص NetHunter إلى defconfig
+          # ============================================
+          CONFIG_FILE="arch/arm64/configs/rosemary_defconfig"
+
+          echo ">> Applying NetHunter patches to defconfig..."
+
+          # --- WiFi Monitor Mode & Packet Injection ---
+          echo "CONFIG_CFG80211=y"                          >> $CONFIG_FILE
+          echo "CONFIG_CFG80211_WEXT=y"                     >> $CONFIG_FILE
+          echo "CONFIG_MAC80211=y"                          >> $CONFIG_FILE
+          echo "CONFIG_MAC80211_MESH=y"                     >> $CONFIG_FILE
+          echo "CONFIG_MAC80211_RC_MINSTREL=y"              >> $CONFIG_FILE
+          echo "CONFIG_MAC80211_RC_MINSTREL_HT=y"           >> $CONFIG_FILE
+          echo "CONFIG_MAC80211_RC_DEFAULT_MINSTREL=y"      >> $CONFIG_FILE
+
+          # --- USB WiFi Adapters Drivers ---
+          echo "CONFIG_USB_NET_DRIVERS=y"                   >> $CONFIG_FILE
+          echo "CONFIG_USB_NET_RNDIS_WLAN=y"               >> $CONFIG_FILE
+          echo "CONFIG_ATH9K_HTC=y"                         >> $CONFIG_FILE
+          echo "CONFIG_ATH9K_HTC_DEBUGFS=y"                 >> $CONFIG_FILE
+          echo "CONFIG_ATH6KL=y"                            >> $CONFIG_FILE
+          echo "CONFIG_ATH6KL_USB=y"                        >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB=y"                         >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB_RT33XX=y"                  >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB_RT35XX=y"                  >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB_RT53XX=y"                  >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB_RT55XX=y"                  >> $CONFIG_FILE
+          echo "CONFIG_RT2800USB_UNKNOWN=y"                 >> $CONFIG_FILE
+          echo "CONFIG_RT2X00=y"                            >> $CONFIG_FILE
+          echo "CONFIG_RT2500USB=y"                         >> $CONFIG_FILE
+          echo "CONFIG_RT73USB=y"                           >> $CONFIG_FILE
+          echo "CONFIG_ZD1211RW=y"                          >> $CONFIG_FILE
+          echo "CONFIG_LIBERTAS=y"                          >> $CONFIG_FILE
+          echo "CONFIG_LIBERTAS_USB=y"                      >> $CONFIG_FILE
+          echo "CONFIG_LIBERTAS_THINFIRM=y"                 >> $CONFIG_FILE
+          echo "CONFIG_LIBERTAS_THINFIRM_USB=y"             >> $CONFIG_FILE
+          echo "CONFIG_CARL9170=y"                          >> $CONFIG_FILE
+          echo "CONFIG_P54_USB=y"                           >> $CONFIG_FILE
+          echo "CONFIG_PRISM2_USB=y"                        >> $CONFIG_FILE
+          echo "CONFIG_RTLWIFI=y"                           >> $CONFIG_FILE
+          echo "CONFIG_RTL8192CU=y"                         >> $CONFIG_FILE
+          echo "CONFIG_RTL8XXXU=y"                          >> $CONFIG_FILE
+          echo "CONFIG_RTL8XXXU_UNTESTED=y"                 >> $CONFIG_FILE
+
+          # --- USB HID (Rubber Ducky / Keyboard Gadget) ---
+          echo "CONFIG_USB_GADGET=y"                        >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS=y"                      >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_F_HID=y"               >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_F_SERIAL=y"            >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_F_ACM=y"               >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_RNDIS=y"               >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_NCM=y"                  >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_ECM=y"                  >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_ECM_SUBSET=y"           >> $CONFIG_FILE
+          echo "CONFIG_USB_CONFIGFS_F_FS=y"                 >> $CONFIG_FILE
+          echo "CONFIG_USB_G_HID=y"                         >> $CONFIG_FILE
+          echo "CONFIG_HID=y"                               >> $CONFIG_FILE
+          echo "CONFIG_USB_HID=y"                           >> $CONFIG_FILE
+          echo "CONFIG_HID_GENERIC=y"                       >> $CONFIG_FILE
+
+          # --- USB Network / RNDIS ---
+          echo "CONFIG_USB_NET_CDCETHER=y"                  >> $CONFIG_FILE
+          echo "CONFIG_USB_NET_CDC_NCM=y"                   >> $CONFIG_FILE
+          echo "CONFIG_USB_NET_HUAWEI_CDC_NCM=y"            >> $CONFIG_FILE
+          echo "CONFIG_USB_NET_CDC_MBIM=y"                  >> $CONFIG_FILE
+          echo "CONFIG_USB_NET_RNDIS_HOST=y"                >> $CONFIG_FILE
+
+          # --- Bluetooth ---
+          echo "CONFIG_BT=y"                                >> $CONFIG_FILE
+          echo "CONFIG_BT_HCIBTUSB=y"                       >> $CONFIG_FILE
+          echo "CONFIG_BT_HCIBTUSB_BCM=y"                   >> $CONFIG_FILE
+          echo "CONFIG_BT_HCIBTUSB_RTL=y"                   >> $CONFIG_FILE
+          echo "CONFIG_BT_RFCOMM=y"                         >> $CONFIG_FILE
+          echo "CONFIG_BT_RFCOMM_TTY=y"                     >> $CONFIG_FILE
+          echo "CONFIG_BT_BNEP=y"                           >> $CONFIG_FILE
+          echo "CONFIG_BT_HIDP=y"                           >> $CONFIG_FILE
+          echo "CONFIG_BT_LE=y"                             >> $CONFIG_FILE
+
+          # --- Network Tools (nmap, tcpdump, etc.) ---
+          echo "CONFIG_PACKET=y"                            >> $CONFIG_FILE
+          echo "CONFIG_PACKET_DIAG=y"                       >> $CONFIG_FILE
+          echo "CONFIG_UNIX=y"                              >> $CONFIG_FILE
+          echo "CONFIG_NET_KEY=y"                           >> $CONFIG_FILE
+          echo "CONFIG_INET=y"                              >> $CONFIG_FILE
+          echo "CONFIG_IP_ADVANCED_ROUTER=y"                >> $CONFIG_FILE
+          echo "CONFIG_IP_MULTIPLE_TABLES=y"                >> $CONFIG_FILE
+          echo "CONFIG_NETFILTER=y"                         >> $CONFIG_FILE
+          echo "CONFIG_NETFILTER_ADVANCED=y"                >> $CONFIG_FILE
+          echo "CONFIG_NF_CONNTRACK=y"                      >> $CONFIG_FILE
+          echo "CONFIG_NF_CONNTRACK_EVENTS=y"               >> $CONFIG_FILE
+          echo "CONFIG_NETFILTER_NETLINK=y"                 >> $CONFIG_FILE
+          echo "CONFIG_NETFILTER_NETLINK_ACCT=y"            >> $CONFIG_FILE
+          echo "CONFIG_NETFILTER_NETLINK_QUEUE=y"           >> $CONFIG_FILE
+          echo "CONFIG_IP_NF_IPTABLES=y"                    >> $CONFIG_FILE
+          echo "CONFIG_IP_NF_FILTER=y"                      >> $CONFIG_FILE
+          echo "CONFIG_IP_NF_NAT=y"                         >> $CONFIG_FILE
+          echo "CONFIG_IP_NF_MANGLE=y"                      >> $CONFIG_FILE
+          echo "CONFIG_IP_NF_TARGET_MASQUERADE=y"           >> $CONFIG_FILE
+          echo "CONFIG_IP6_NF_IPTABLES=y"                   >> $CONFIG_FILE
+          echo "CONFIG_IP6_NF_FILTER=y"                     >> $CONFIG_FILE
+          echo "CONFIG_IP6_NF_MANGLE=y"                     >> $CONFIG_FILE
+          echo "CONFIG_IP6_NF_NAT=y"                        >> $CONFIG_FILE
+
+          # --- TUN/TAP (VPN مثل OpenVPN) ---
+          echo "CONFIG_TUN=y"                               >> $CONFIG_FILE
+          echo "CONFIG_TAP=y"                               >> $CONFIG_FILE
+
+          # --- NFS / CIFS ---
+          echo "CONFIG_NFS_FS=y"                            >> $CONFIG_FILE
+          echo "CONFIG_NFS_V4=y"                            >> $CONFIG_FILE
+          echo "CONFIG_CIFS=y"                              >> $CONFIG_FILE
+
+          # --- SDR (Software Defined Radio - HackRF etc.) ---
+          echo "CONFIG_USB_SERIAL=y"                        >> $CONFIG_FILE
+          echo "CONFIG_USB_SERIAL_GENERIC=y"                >> $CONFIG_FILE
+          echo "CONFIG_USB_SERIAL_CP210X=y"                 >> $CONFIG_FILE
+          echo "CONFIG_USB_SERIAL_FTDI_SIO=y"               >> $CONFIG_FILE
+          echo "CONFIG_USB_SERIAL_PL2303=y"                 >> $CONFIG_FILE
+          echo "CONFIG_USB_SERIAL_CH341=y"                  >> $CONFIG_FILE
+          echo "CONFIG_USB_ACM=y"                           >> $CONFIG_FILE
+
+          # --- CAN Bus ---
+          echo "CONFIG_CAN=y"                               >> $CONFIG_FILE
+          echo "CONFIG_CAN_RAW=y"                           >> $CONFIG_FILE
+          echo "CONFIG_CAN_BCM=y"                           >> $CONFIG_FILE
+          echo "CONFIG_CAN_GW=y"                            >> $CONFIG_FILE
+          echo "CONFIG_CAN_VCAN=y"                          >> $CONFIG_FILE
+
+          echo ">> NetHunter config applied successfully!"
+
+      - name: 🏗️ Build Kernel
+        run: |
+          export PATH="$HOME/clang-llvm/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export OUTDIR=$HOME/out
+          mkdir -p $OUTDIR
+
+          echo "-NetHunter-Rosemary" > localversion
+
+          # Generate .config from defconfig
+          make O=$OUTDIR \
+            ARCH=arm64 \
+            CC=clang \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            NM=llvm-nm \
+            AR=llvm-ar \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            rosemary_defconfig
+
+          # Build
+          make -j$(nproc) O=$OUTDIR \
+            ARCH=arm64 \
+            CC=clang \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            NM=llvm-nm \
+            AR=llvm-ar \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            2>&1 | tee build.log
+
+          # تحقق من نجاح البناء
+          if [ ! -f "$OUTDIR/arch/arm64/boot/Image.gz" ]; then
+            echo "❌ BUILD FAILED! Image.gz not found"
+            tail -50 build.log
+            exit 1
+          fi
+          echo "✅ Kernel built successfully!"
+
+      - name: 📦 Package with AnyKernel3
+        run: |
+          OUTDIR=$HOME/out
+          DATE=$(date "+%Y%m%d-%H%M")
+
+          cp $OUTDIR/arch/arm64/boot/Image.gz $HOME/AnyKernel/
+          cd $HOME/AnyKernel
+
+          zip -r9 "NetHunter-Rosemary-${DATE}.zip" ./* \
+            --exclude=".git" \
+            --exclude="*.zip"
+
+          echo "✅ Package created: NetHunter-Rosemary-${DATE}.zip"
+          ls -lh *.zip
+
+      - name: 🚀 Upload Kernel ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetHunter-Rosemary-Kernel
+          path: /root/AnyKernel/NetHunter-Rosemary-*.zip
+          retention-days: 30
+
+      - name: 📋 Upload Build Log (if failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-error
+          path: build.log
+          retention-days: 7
